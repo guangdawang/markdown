@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown 文档渲染器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            padding: 20px 30px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+        }
+        
+        .description {
+            font-size: 1rem;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .editor-container {
+            display: flex;
+            flex-direction: row;
+            height: 70vh;
+            border-bottom: 1px solid #eaeaea;
+        }
+        
+        @media (max-width: 768px) {
+            .editor-container {
+                flex-direction: column;
+                height: auto;
+            }
+        }
+        
+        .editor-panel, .preview-panel {
+            flex: 1;
+            padding: 20px;
+            overflow: auto;
+        }
+        
+        .editor-panel {
+            border-right: 1px solid #eaeaea;
+            background-color: #fafafa;
+        }
+        
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eaeaea;
+        }
+        
+        .panel-title {
+            font-weight: 600;
+            color: #555;
+            font-size: 1.1rem;
+        }
+        
+        .word-count {
+            font-size: 0.9rem;
+            color: #888;
+        }
+        
+        #markdown-input {
+            width: 100%;
+            height: calc(100% - 50px);
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            font-size: 16px;
+            line-height: 1.5;
+            resize: none;
+            background: white;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        }
+        
+        #markdown-preview {
+            height: calc(100% - 50px);
+            overflow: auto;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+        }
+        
+        .markdown-body {
+            font-size: 16px;
+            line-height: 1.7;
+        }
+        
+        .markdown-body h1, 
+        .markdown-body h2, 
+        .markdown-body h3, 
+        .markdown-body h4, 
+        .markdown-body h5, 
+        .markdown-body h6 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+        
+        .markdown-body h1 {
+            font-size: 2em;
+            padding-bottom: 0.3em;
+            border-bottom: 1px solid #eaecef;
+        }
+        
+        .markdown-body h2 {
+            font-size: 1.5em;
+            padding-bottom: 0.3em;
+            border-bottom: 1px solid #eaecef;
+        }
+        
+        .markdown-body p {
+            margin-bottom: 16px;
+        }
+        
+        .markdown-body blockquote {
+            padding: 0 1em;
+            color: #6a737d;
+            border-left: 0.25em solid #dfe2e5;
+            margin-bottom: 16px;
+        }
+        
+        .markdown-body pre {
+            padding: 16px;
+            overflow: auto;
+            font-size: 85%;
+            line-height: 1.45;
+            background-color: #f6f8fa;
+            border-radius: 6px;
+            margin-bottom: 16px;
+        }
+        
+        .markdown-body code {
+            padding: 0.2em 0.4em;
+            margin: 0;
+            font-size: 85%;
+            background-color: rgba(27,31,35,0.05);
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        }
+        
+        .markdown-body pre code {
+            padding: 0;
+            background-color: transparent;
+        }
+        
+        .markdown-body table {
+            border-spacing: 0;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+            width: 100%;
+        }
+        
+        .markdown-body table th, 
+        .markdown-body table td {
+            padding: 6px 13px;
+            border: 1px solid #dfe2e5;
+        }
+        
+        .markdown-body table tr {
+            background-color: #fff;
+            border-top: 1px solid #c6cbd1;
+        }
+        
+        .markdown-body table tr:nth-child(2n) {
+            background-color: #f6f8fa;
+        }
+        
+        .markdown-body ul, 
+        .markdown-body ol {
+            padding-left: 2em;
+            margin-bottom: 16px;
+        }
+        
+        .markdown-body li {
+            margin-bottom: 4px;
+        }
+        
+        .markdown-body img {
+            max-width: 100%;
+            box-sizing: content-box;
+            margin-bottom: 16px;
+        }
+        
+        .markdown-body hr {
+            height: 0.25em;
+            padding: 0;
+            margin: 24px 0;
+            background-color: #e1e4e8;
+            border: 0;
+        }
+        
+        .actions {
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            background: #f9f9f9;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        #reset-btn {
+            background: #ff4757;
+            color: white;
+        }
+        
+        #reset-btn:hover {
+            background: #ff3742;
+        }
+        
+        #export-btn {
+            background: #2ed573;
+            color: white;
+        }
+        
+        #export-btn:hover {
+            background: #25c75d;
+        }
+        
+        #toggle-theme {
+            background: #3742fa;
+            color: white;
+        }
+        
+        #toggle-theme:hover {
+            background: #2f36e0;
+        }
+        
+        .dark-theme {
+            background-color: #1e272e;
+            color: #dcdde1;
+        }
+        
+        .dark-theme .container {
+            background: #2f3640;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .dark-theme header {
+            background: linear-gradient(135deg, #8e44ad 0%, #3498db 100%);
+        }
+        
+        .dark-theme .editor-panel {
+            background-color: #353b48;
+            border-right: 1px solid #4b5563;
+        }
+        
+        .dark-theme #markdown-input {
+            background: #2d3436;
+            color: #dcdde1;
+            border: 1px solid #4b5563;
+        }
+        
+        .dark-theme #markdown-preview {
+            background: #2d3436;
+        }
+        
+        .dark-theme .markdown-body {
+            color: #dcdde1;
+        }
+        
+        .dark-theme .markdown-body h1, 
+        .dark-theme .markdown-body h2 {
+            border-bottom: 1px solid #4b5563;
+        }
+        
+        .dark-theme .markdown-body blockquote {
+            color: #a4b0be;
+            border-left: 0.25em solid #4b5563;
+        }
+        
+        .dark-theme .markdown-body pre {
+            background-color: #353b48;
+        }
+        
+        .dark-theme .markdown-body code {
+            background-color: rgba(127, 140, 141, 0.2);
+        }
+        
+        .dark-theme .markdown-body table th, 
+        .dark-theme .markdown-body table td {
+            border: 1px solid #4b5563;
+        }
+        
+        .dark-theme .markdown-body table tr {
+            background-color: #2d3436;
+            border-top: 1px solid #4b5563;
+        }
+        
+        .dark-theme .markdown-body table tr:nth-child(2n) {
+            background-color: #353b48;
+        }
+        
+        .dark-theme .markdown-body hr {
+            background-color: #4b5563;
+        }
+        
+        .dark-theme .actions {
+            background: #353b48;
+        }
+        
+        .dark-theme .panel-header {
+            border-bottom: 1px solid #4b5563;
+        }
+        
+        .dark-theme .panel-title {
+            color: #dcdde1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Markdown 文档渲染器</h1>
+            <p class="description">在左侧编辑 Markdown 文本，右侧实时预览渲染效果。支持标题、列表、代码块、表格等常用语法。</p>
+        </header>
+        
+        <div class="editor-container">
+            <div class="editor-panel">
+                <div class="panel-header">
+                    <span class="panel-title">Markdown 编辑器</span>
+                    <span class="word-count">字数: <span id="word-count">0</span></span>
+                </div>
+                <textarea id="markdown-input" placeholder="在此输入 Markdown 文本..."># Markdown 文档渲染器
+
+这是一个功能完整的 Markdown 渲染器，支持实时预览。
+
+## 功能特性
+
+- 实时预览 Markdown 渲染效果
+- 支持常用 Markdown 语法
+- 亮色/暗色主题切换
+- 文档导出功能
+- 响应式设计，适配各种设备
+
+## 常用语法示例
+
+### 标题
+
+# 一级标题
+## 二级标题
+### 三级标题
+
+### 文本样式
+
+**粗体文本**、*斜体文本*、~~删除线文本~~
+
+### 列表
+
+#### 无序列表
+- 列表项一
+- 列表项二
+  - 嵌套列表项
+- 列表项三
+
+#### 有序列表
+1. 第一项
+2. 第二项
+   1. 嵌套项
+3. 第三项
+
+### 链接和图片
+
+[这是一个链接](https://example.com)
+
+![图片描述](https://via.placeholder.com/150)
+
+### 代码
+
+行内代码：`console.log('Hello World')`
+
+代码块：
+```javascript
+function hello() {
+  console.log('Hello Markdown!');
+  return true;
+}
+```
+
+### 引用
+
+> 这是一个引用块
+> 可以包含多行内容
+
+### 表格
+
+| 姓名   | 年龄 | 职业     |
+|--------|------|----------|
+| 张三   | 28   | 工程师   |
+| 李四   | 32   | 设计师   |
+| 王五   | 25   | 产品经理 |
+
+### 分割线
+
+---
+
+开始编写您的 Markdown 文档吧！</textarea>
+            </div>
+            
+            <div class="preview-panel">
+                <div class="panel-header">
+                    <span class="panel-title">实时预览</span>
+                    <span class="word-count">字符: <span id="char-count">0</span></span>
+                </div>
+                <div id="markdown-preview">
+                    <div class="markdown-body">
+                        <!-- 预览内容将在这里渲染 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="actions">
+            <button id="reset-btn">重置文档</button>
+            <button id="export-btn">导出 HTML</button>
+            <button id="toggle-theme">切换主题</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const markdownInput = document.getElementById('markdown-input');
+            const markdownPreview = document.querySelector('#markdown-preview .markdown-body');
+            const wordCountElement = document.getElementById('word-count');
+            const charCountElement = document.getElementById('char-count');
+            const resetBtn = document.getElementById('reset-btn');
+            const exportBtn = document.getElementById('export-btn');
+            const toggleThemeBtn = document.getElementById('toggle-theme');
+            
+            // 初始渲染
+            updatePreview();
+            updateCounts();
+            
+            // 输入时实时更新预览和计数
+            markdownInput.addEventListener('input', function() {
+                updatePreview();
+                updateCounts();
+            });
+            
+            // 重置文档
+            resetBtn.addEventListener('click', function() {
+                if (confirm('确定要重置文档吗？所有内容将被清除。')) {
+                    markdownInput.value = '';
+                    updatePreview();
+                    updateCounts();
+                }
+            });
+            
+            // 导出HTML
+            exportBtn.addEventListener('click', function() {
+                const htmlContent = markdownPreview.innerHTML;
+                const blob = new Blob([`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Exported Markdown</title><style>${getMarkdownStyles()}</style></head><body><div class="markdown-body">${htmlContent}</div></body></html>`], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'markdown-export.html';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+            
+            // 切换主题
+            toggleThemeBtn.addEventListener('click', function() {
+                document.body.classList.toggle('dark-theme');
+            });
+            
+            // 更新预览
+            function updatePreview() {
+                const markdownText = markdownInput.value;
+                markdownPreview.innerHTML = marked.parse(markdownText);
+            }
+            
+            // 更新字数统计
+            function updateCounts() {
+                const text = markdownInput.value;
+                const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+                const characters = text.length;
+                
+                wordCountElement.textContent = words;
+                charCountElement.textContent = characters;
+            }
+            
+            // 获取Markdown样式
+            function getMarkdownStyles() {
+                return `
+                    * {
+                        margin: 0;
+                        padding: 0;
+                        box-sizing: border-box;
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    }
+                    
+                    body {
+                        background-color: #f5f7fa;
+                        color: #333;
+                        line-height: 1.6;
+                        padding: 40px;
+                    }
+                    
+                    .markdown-body {
+                        max-width: 800px;
+                        margin: 0 auto;
+                        background: white;
+                        padding: 40px;
+                        border-radius: 10px;
+                        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+                        font-size: 16px;
+                        line-height: 1.7;
+                    }
+                    
+                    .markdown-body h1, 
+                    .markdown-body h2, 
+                    .markdown-body h3, 
+                    .markdown-body h4, 
+                    .markdown-body h5, 
+                    .markdown-body h6 {
+                        margin-top: 24px;
+                        margin-bottom: 16px;
+                        font-weight: 600;
+                        line-height: 1.25;
+                    }
+                    
+                    .markdown-body h1 {
+                        font-size: 2em;
+                        padding-bottom: 0.3em;
+                        border-bottom: 1px solid #eaecef;
+                    }
+                    
+                    .markdown-body h2 {
+                        font-size: 1.5em;
+                        padding-bottom: 0.3em;
+                        border-bottom: 1px solid #eaecef;
+                    }
+                    
+                    .markdown-body p {
+                        margin-bottom: 16px;
+                    }
+                    
+                    .markdown-body blockquote {
+                        padding: 0 1em;
+                        color: #6a737d;
+                        border-left: 0.25em solid #dfe2e5;
+                        margin-bottom: 16px;
+                    }
+                    
+                    .markdown-body pre {
+                        padding: 16px;
+                        overflow: auto;
+                        font-size: 85%;
+                        line-height: 1.45;
+                        background-color: #f6f8fa;
+                        border-radius: 6px;
+                        margin-bottom: 16px;
+                    }
+                    
+                    .markdown-body code {
+                        padding: 0.2em 0.4em;
+                        margin: 0;
+                        font-size: 85%;
+                        background-color: rgba(27,31,35,0.05);
+                        border-radius: 3px;
+                        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                    }
+                    
+                    .markdown-body pre code {
+                        padding: 0;
+                        background-color: transparent;
+                    }
+                    
+                    .markdown-body table {
+                        border-spacing: 0;
+                        border-collapse: collapse;
+                        margin-bottom: 16px;
+                        width: 100%;
+                    }
+                    
+                    .markdown-body table th, 
+                    .markdown-body table td {
+                        padding: 6px 13px;
+                        border: 1px solid #dfe2e5;
+                    }
+                    
+                    .markdown-body table tr {
+                        background-color: #fff;
+                        border-top: 1px solid #c6cbd1;
+                    }
+                    
+                    .markdown-body table tr:nth-child(2n) {
+                        background-color: #f6f8fa;
+                    }
+                    
+                    .markdown-body ul, 
+                    .markdown-body ol {
+                        padding-left: 2em;
+                        margin-bottom: 16px;
+                    }
+                    
+                    .markdown-body li {
+                        margin-bottom: 4px;
+                    }
+                    
+                    .markdown-body img {
+                        max-width: 100%;
+                        box-sizing: content-box;
+                        margin-bottom: 16px;
+                    }
+                    
+                    .markdown-body hr {
+                        height: 0.25em;
+                        padding: 0;
+                        margin: 24px 0;
+                        background-color: #e1e4e8;
+                        border: 0;
+                    }
+                `;
+            }
+        });
+    </script>
+    
+    <!-- 使用 marked.js 库解析 Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</body>
+</html>
